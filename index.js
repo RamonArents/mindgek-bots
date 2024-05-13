@@ -21,10 +21,22 @@ function followPlayer() {
 
   const mcData = require("minecraft-data")(bot.version);
   const movements = new Movements(bot, mcData);
+  movements.scafoldingBlocks = [];
   bot.pathfinder.setMovements(movements);
 
   const goal = new GoalFollow(playerCI.entity, 1);
   bot.pathfinder.setGoal(goal, true);
+
+}
+
+function locateEmeraldBlocks() {
+  const mcData = require("minecraft-data")(bot.version);
+
+  const movements = new Movements(bot, mcData);
+  movements.scafoldingBlocks = [];
+  
+  bot.pathfinder.setMovements(movements);
+
 }
 
 //Looks at nearest player. Not in use now.
