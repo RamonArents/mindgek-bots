@@ -23,8 +23,7 @@ function followPlayer() {
     return;
   }
 
-  const mcData = require("minecraft-data")(bot.version);
-  const movements = new Movements(bot, mcData);
+  const movements = new Movements(bot, bot.mcData);
   movements.scafoldingBlocks = [];
   bot.pathfinder.setMovements(movements);
 
@@ -33,9 +32,8 @@ function followPlayer() {
 }
 
 function locateEmeraldBlocks() {
-  const mcData = require("minecraft-data")(bot.version);
 
-  const movements = new Movements(bot, mcData);
+  const movements = new Movements(bot, bot.mcData);
   movements.scafoldingBlocks = [];
 
   bot.pathfinder.setMovements(movements);
@@ -81,12 +79,13 @@ function handleTimeout(){
 
 //once runs only one time
 bot.once("spawn", () =>{
+  bot.mcData = require("minecraft-data")(bot.version);
   //This code follows the player until an (placed) emerald block is found. After that it will stay 5 sec on the emerald block. After that he will follow the player again.
   isFollowing = true;
   followPlayer();
 
-  bot.on('blockUpdate', (oldBlock, newBlock) => {
-    if (newBlock.name === 'emerald_block') {
+  bot.on("blockUpdate", (oldBlock, newBlock) => {
+    if (newBlock.name === "emerald_block") {
       emeraldBlockFound = true;
       if (isFollowing) {
         isFollowing = false;
@@ -95,10 +94,38 @@ bot.once("spawn", () =>{
     }
   });
 
-  bot.on('goal_reached', () => {
+  bot.on("goal_reached", () => {
     handleTimeout();
   });
 });
+
+//Bot on chat (this can be used to pass commands to the bot)
+bot.on("chat", (username, message) => {
+  const args = message.split(" ");
+
+  // //Finds the item id of an item by typing item_id <name_of_item> in the chat
+  // if (args[0] === "item_id"){
+  //   const itemName = args[1];
+  //   const id = bot.mcData.itemsByName[itemName].id;
+  //   bot.chat(`The item id for ${args[1]} is ${id}`);
+  // }
+
+  // //Finds the position of grass blocks by typing find in the chat
+  // if(args[0] === "find"){
+  //   const id = bot.mcData.blocksByName["grass_block"].id;
+  //   const block = bot.findBlock({
+  //     matching: id
+  //   });
+    
+  //   bot.chat(`The block is at ${block.position}`);
+  // }
+
+  // //list of all types (this does not work)
+  // if (args[0] === "type_list"){
+  //   bot.chat(bot.mcData.blocks.map(b => b.name).join(", "));
+  // }
+  
+})
 
 //Error handlling
 //on runs always
