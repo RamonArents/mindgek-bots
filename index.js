@@ -13,8 +13,7 @@ const bot = mineflayer.createBot({
 bot.loadPlugin(pathfinder);
 
 let isFollowing = false;
-let logsFound = false;
-let blockCategory  = "log";
+let emeraldBlockFound = false;
 
 function followPlayer() {
   const playerCI = bot.players["DarthMasterRa"];
@@ -24,7 +23,8 @@ function followPlayer() {
     return;
   }
 
-  const movements = new Movements(bot, bot.mcData);
+  const mcData = require("minecraft-data")(bot.version);
+  const movements = new Movements(bot, mcData);
   movements.scafoldingBlocks = [];
   bot.pathfinder.setMovements(movements);
 
@@ -32,45 +32,41 @@ function followPlayer() {
   bot.pathfinder.setGoal(goal, true);
 }
 
-function locateTrees(blockCategory) {
+function locateEmeraldBlocks() {
+  const mcData = require("minecraft-data")(bot.version);
 
-  const tree = bot.findBlock({
-    matching: block => block.name.includes(blockCategory),
+  const movements = new Movements(bot, mcData);
+  movements.scafoldingBlocks = [];
+
+  bot.pathfinder.setMovements(movements);
+
+  const emeraldBlock = bot.findBlock({
+    matching: mcData.blocksByName.oak_log.id,
     maxDistance: 32,
+    count: 1
   });
 
-  if(tree){
-    bot.chat("I have found a tree. Going to mine it.");
-
-    const goal = new GoalBlock(tree.position.x, tree.position.y, tree.position.z);
-    bot.pathfinder.setGoal(goal);
-    bot.targetDigBlock = tree;
-  
-  }
-}
-
-function mineBlock(){
-  if(bot.targetDigBlock){
-    bot.dig(bot.targetDigBlock, onDiggingCompleted);
+  if (!emeraldBlock) {
+    bot.chat("I can't see emerald block. Going to follow player.");
   } else {
-    console.log("No block targeted for mining");
+    bot.chat("Found oak_log. Digging it now.");
   }
 
-}
+  const x = emeraldBlock.position.x;
+  const y = emeraldBlock.position.y + 1;
+  const z = emeraldBlock.position.z;
 
-function onDiggingCompleted(err) {
-  if (err) {
-    console.log('Error while mining:', err);
-    return;
-  }
+  const goal = new GoalBlock(x, y, z);
+  bot.pathfinder.setGoal(goal);
 
-  isFollowing = true;
-  followPlayer();
+  bot.targetDigBlock = emeraldBlock;
+  bot.dig(bot.targetDigBlock);
+  
 }
 
 function handleTimeout(){
-  if (logsFound) {
-    logsFound = false;
+  if (emeraldBlockFound) {
+    emeraldBlockFound = false;
     setTimeout(() => {
       isFollowing = true;
       followPlayer();
@@ -80,31 +76,25 @@ function handleTimeout(){
 
 //once runs only one time
 bot.once("spawn", () =>{
-  //TODO: Let bot follow player again when it has mined the tree. That is currently not working.
-  bot.mcData = require("minecraft-data")(bot.version);
+  //TODO: Change code so it can dig wood
+  //This code follows the player until an (placed) emerald block is found. After that it will stay 5 sec on the emerald block. After that he will follow the player again.
   isFollowing = true;
   followPlayer();
 
-  bot.on("blockUpdate", (oldBlock, newBlock) => {
-    if (newBlock.name.includes(blockCategory)) {
-      logsFound = true;
+  bot.on('blockUpdate', (oldBlock, newBlock) => {
+    if (newBlock.name === 'oak_log') {
+      emeraldBlockFound = true;
       if (isFollowing) {
         isFollowing = false;
-        locateTrees(blockCategory);
+        locateEmeraldBlocks();
       }
     }
   });
 
-  bot.on("goal_reached", () => {
-    if(logsFound){
-      isFollowing = false;
-      mineBlock();
-    }else{
-      handleTimeout();
-    }
+  bot.on('goal_reached', () => {
+    handleTimeout();
   });
 });
-
 
 //Error handlling
 //on runs always
