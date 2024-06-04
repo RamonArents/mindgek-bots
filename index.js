@@ -2,6 +2,7 @@ const mineflayer = require("mineflayer");
 const { pathfinder, Movements, goals } = require("mineflayer-pathfinder");
 const GoalFollow = goals.GoalFollow;
 const GoalBlock = goals.GoalBlock;
+const { Vec3 } = require('vec3')
 
 /* Uitproberen op versie van mindgek onder 1.20.5 */
 const bot = mineflayer.createBot({
@@ -32,76 +33,60 @@ function followPlayer() {
   bot.pathfinder.setGoal(goal, true);
 }
 
-function locateEmeraldBlocks() {
-  const mcData = require("minecraft-data")(bot.version);
+// Wait for the bot to spawn
+bot.on('spawn', () => {
+  console.log('Bot has spawned in the world')
 
-  const movements = new Movements(bot, mcData);
-  movements.scafoldingBlocks = [];
-
-  bot.pathfinder.setMovements(movements);
-
-  const emeraldBlock = bot.findBlock({
-    matching: mcData.blocksByName.oak_log.id,
-    maxDistance: 32,
-    count: 1
-  });
-
-  if (!emeraldBlock) {
-    bot.chat("I can't see emerald block. Going to follow player.");
-  } else {
-    bot.chat("Found oak_log. Digging it now.");
-  }
-
-  const x = emeraldBlock.position.x;
-  const y = emeraldBlock.position.y + 1;
-  const z = emeraldBlock.position.z;
-
-  const goal = new GoalBlock(x, y, z);
-  bot.pathfinder.setGoal(goal);
-
-  bot.targetDigBlock = emeraldBlock;
-  bot.dig(bot.targetDigBlock);
-  
-}
-
-function handleTimeout(){
-  if (emeraldBlockFound) {
-    emeraldBlockFound = false;
-    setTimeout(() => {
-      isFollowing = true;
-      followPlayer();
-    }, 5000);
-  }
-}
-
-//once runs only one time
-bot.once("spawn", () =>{
-  //TODO: Change code so it can dig wood
-  //This code follows the player until an (placed) emerald block is found. After that it will stay 5 sec on the emerald block. After that he will follow the player again.
-  isFollowing = true;
   followPlayer();
 
-  bot.on('blockUpdate', (oldBlock, newBlock) => {
-    if (newBlock.name === 'oak_log') {
-      emeraldBlockFound = true;
-      if (isFollowing) {
-        isFollowing = false;
-        locateEmeraldBlocks();
-      }
+  // Function to find the nearest oak log
+  function findNearestOakLog() {
+    const logBlocks = bot.findBlocks({
+      matching: (block) => block.name === 'oak_log',
+      maxDistance: 64,
+      count: 1
+    })
+
+    if (logBlocks.length > 0) {
+      return logBlocks[0]
+    } else {
+      console.log('No oak logs found nearby')
+      return null
     }
-  });
+  }
 
-  bot.on('goal_reached', () => {
-    handleTimeout();
-  });
-});
+  // Function to mine the oak log
+  function mineOakLog(logBlock) {
+    bot.dig(bot.blockAt(new Vec3(logBlock.x, logBlock.y, logBlock.z)), (err) => {
+      if (err) {
+        console.log('Error mining log:', err)
+      } else {
+        console.log('Successfully mined an oak log')
+      }
+    })
+  }
 
-//Error handlling
-//on runs always
-bot.on("error", (err) => {
-  console.error("Error: ", err);
-});
+  // Main function to find and mine oak logs
+  function findAndMineOakLogs() {
+    const logBlock = findNearestOakLog()
+    if (logBlock) {
+      mineOakLog(logBlock)
+    } 
+  }
 
-bot.on("end", () => {
-  console.log("Bot disconnected.");
-});
+  // Start mining oak logs
+  findAndMineOakLogs()
+
+  // Repeatedly find and mine oak logs
+  setInterval(findAndMineOakLogs, 5000) // Adjust interval as needed
+})
+
+// Log errors
+bot.on('error', (err) => {
+  console.log('Error:', err)
+})
+
+// Log when the bot disconnects
+bot.on('end', () => {
+  console.log('Bot has disconnected')
+})
