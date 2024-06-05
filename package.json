@@ -13,6 +13,7 @@
     "mineflayer": "^4.20.1",
     "mineflayer-blockfinder": "^0.0.7",
     "mineflayer-navigate": "^0.0.10",
-    "mineflayer-pathfinder": "^2.4.5"
+    "mineflayer-pathfinder": "^2.4.5",
+    "prismarine-viewer": "^1.28.0"
   }
 }

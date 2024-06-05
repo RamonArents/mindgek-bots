@@ -1,7 +1,7 @@
 const mineflayer = require("mineflayer");
 const { pathfinder, Movements, goals } = require("mineflayer-pathfinder");
+const { mineflayer: mineflayerViewer } = require('prismarine-viewer')
 const GoalFollow = goals.GoalFollow;
-const GoalBlock = goals.GoalBlock;
 const { Vec3 } = require('vec3')
 
 /* Uitproberen op versie van mindgek onder 1.20.5 */
@@ -12,9 +12,6 @@ const bot = mineflayer.createBot({
 });
 
 bot.loadPlugin(pathfinder);
-
-let isFollowing = false;
-let emeraldBlockFound = false;
 
 function followPlayer() {
   const playerCI = bot.players["DarthMasterRa"];
@@ -33,17 +30,34 @@ function followPlayer() {
   bot.pathfinder.setGoal(goal, true);
 }
 
+// Function to display the bot's inventory
+function displayInventory() {
+  const items = bot.inventory.items()
+  if (items.length === 0) {
+    bot.chat('My Inventory is empty')
+  } else {
+    bot.chat('Inventory:')
+    items.forEach(item => {
+      bot.chat(`- ${item.count}x ${item.displayName}`)
+    })
+  }
+}
+
 // Wait for the bot to spawn
 bot.on('spawn', () => {
   console.log('Bot has spawned in the world')
 
   followPlayer();
 
+  //View inventory
+  mineflayerViewer(bot, { port: 3007, firstPerson: true})
+  console.log('Bot spawned and viewer initialized. Access it at http://localhost:3007')
+
   // Function to find the nearest oak log
   function findNearestOakLog() {
     const logBlocks = bot.findBlocks({
       matching: (block) => block.name === 'oak_log',
-      maxDistance: 64,
+      maxDistance: 5,
       count: 1
     })
 
@@ -74,11 +88,15 @@ bot.on('spawn', () => {
     } 
   }
 
-  // Start mining oak logs
-  findAndMineOakLogs()
-
   // Repeatedly find and mine oak logs
   setInterval(findAndMineOakLogs, 5000) // Adjust interval as needed
+})
+
+// Command to display inventory when a specific message is received
+bot.on('chat', (username, message) => {
+  if (message === 'show inventory') {
+    displayInventory()
+  }
 })
 
 // Log errors
