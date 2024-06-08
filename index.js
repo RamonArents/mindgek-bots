@@ -82,6 +82,96 @@ function displayInventory() {
   }
 }
 
+function findShulkerBox() {
+  const movements = new Movements(bot, mcData)
+  bot.pathfinder.setMovements(movements)
+
+  // Find a shulker box within a 32-block radius
+  const shulkerBox = bot.findBlock({
+    matching: block => {
+      const blockName = mcData.blocks[block.type].name
+      return blockName.endsWith("shulker_box")
+    }, 
+    maxDistance: 5
+  })
+
+  if (shulkerBox) {
+    bot.chat('Shulker box found.')
+    // Move to the shulker box
+    bot.pathfinder.setGoal(new goals.GoalNear(shulkerBox.position.x, shulkerBox.position.y, shulkerBox.position.z, 1))
+    bot.once('goal_reached', () => {
+      // Open the shulker box and transfer items
+      openShulkerBox(shulkerBox)
+    })
+  } else {
+    bot.chat('No shulker box found nearby.')
+  }
+}
+
+function openShulkerBox(shulkerBox) {
+  bot.openContainer(shulkerBox).then(container => {
+    bot.chat('Shulker box opened.')
+    // Transfer items from the bot's inventory to the shulker box
+    transferItems(container)
+  }).catch(err => {
+    console.log('Error opening shulker box:', err)
+  })
+}
+
+function findFirstEmptySlot(container) {
+  for (let i = 0; i < container.slots.length; i++) {
+    if (!container.slots[i]) {
+      return i
+    }
+  }
+  return -1
+}
+
+function transferItems(container) {
+  const itemsToTransfer = bot.inventory.items()
+  .filter(item => {
+    const itemName = mcData.items[item.type].name
+    return !itemName.endsWith('shulker_box')
+  })
+
+  if (itemsToTransfer.length === 0) {
+    bot.chat('No items to transfer.')
+    container.close()
+    return
+  }
+
+  // Transfer items to the shulker box
+  let transferPromises = itemsToTransfer.map(item => {
+    const emptySlot = findFirstEmptySlot(container)
+
+    if (emptySlot === -1) {
+      bot.chat('No empty slots in shulker box.')
+      return Promise.resolve()
+    }
+
+    console.log(item)
+
+    return bot.transfer({
+      window: container,
+      itemType: item.type,
+      metadata: item.metadata,
+      sourceStart: bot.inventory.findInventoryItem(item.type).slot,
+      destStart: emptySlot,
+      count: item.count
+    })
+  })
+
+  Promise.all(transferPromises)
+    .then(() => {
+      bot.chat("All items transfered to shulker box.");
+      container.close();
+    })
+    .catch(err => {
+      console.log("Error transfering items", err);
+      container.close();
+    })
+}
+
 // Wait for the bot to spawn
 bot.on("spawn", () => {
   const mcData = require("minecraft-data")(bot.version);
@@ -107,6 +197,9 @@ bot.on("chat", (username, message) => {
   }
   if (message === "show inventory") {
     displayInventory();
+  }
+  if (message === "shulkeren") {
+    findShulkerBox();
   }
 });
 
