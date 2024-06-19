@@ -83,6 +83,7 @@ function displayInventory() {
   }
 }
 
+/* TODO: Fix bug TypeError: Cannot read properties of null (reading 'type') */
 function dropAllItems() {
   const items = bot.inventory.items();
   if (items.length === 0) {
@@ -90,26 +91,49 @@ function dropAllItems() {
     return;
   }
 
-  const dropNext = () => {
-    if (items.length === 0) {
-      console.log("All items dropped.");
-      return;
-    }
-
-    const item = items.shift();
-    console.log(`Dropping ${item.count}x ${item.displayName}`);
-
-    bot.tossStack(item, (err) => {
-      if (err) {
-        console.log(`Error dropping ${item.displayName}:`, err);
+  let promises = items.map((item) => {
+    return new Promise((resolve, reject) => {
+      if (item) {
+        console.log(`Dropping ${item.count}x ${item.displayName}`);
+        bot.toss(item.type, null, item.count, (err) => {
+          if (err) {
+            console.log(`Error dropping ${item.displayName}:`, err);
+            reject(err);
+          } else {
+            console.log(`Dropped ${item.displayName}`);
+            resolve();
+          }
+        });
       } else {
-        console.log(`Dropped ${item.displayName}`);
+        resolve();
       }
-      dropNext();
     });
-  };
+  });
 
-  dropNext();
+  Promise.all(promises)
+    .then(() => {
+      console.log("All items dropped.");
+    })
+    .catch((err) => {
+      console.log("Error dropping items:", err);
+    });
+}
+
+//Warning: Don't take this function serious
+function chatBot() {
+  const chatArray = [
+    "Ik ben 13",
+    "Hebben jullie het al over het slangtje en gaatje gehad?",
+    "Let's go a rally......Yahoo",
+    "Ok, here we go",
+    "Haaaaaaaaaaaaallllllllllllllllllllllloooooooooooooooo",
+    "Wat denk jij dan?",
+    "No, I don't think I will",
+  ];
+
+  const pickAChat = Math.floor(Math.random() * chatArray.length);
+
+  bot.chat(chatArray[pickAChat]);
 }
 
 // Wait for the bot to spawn
@@ -140,6 +164,10 @@ bot.on("chat", (username, message) => {
   //Let bot drop all his items
   if (message === "drop items") {
     dropAllItems();
+  }
+  //Chat function to joke around
+  if (message === "hey chip") {
+    chatBot();
   }
 });
 
