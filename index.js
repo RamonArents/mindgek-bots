@@ -83,47 +83,48 @@ function displayInventory() {
   }
 }
 
-/* TODO: Fix bug TypeError: Cannot read properties of null (reading 'type') */
-function dropAllItems() {
-  const items = bot.inventory.items();
-  if (items.length === 0) {
-    console.log("No items to drop.");
-    return;
-  }
+function dropItem(message) {
 
-  let promises = items.map((item) => {
-    return new Promise((resolve, reject) => {
-      if (item) {
-        console.log(`Dropping ${item.count}x ${item.displayName}`);
-        bot.toss(item.type, null, item.count, (err) => {
-          if (err) {
-            console.log(`Error dropping ${item.displayName}:`, err);
-            reject(err);
-          } else {
-            console.log(`Dropped ${item.displayName}`);
-            resolve();
-          }
-        });
+  let itemName = message.replace("drop ", "");
+
+  if (hasItem(itemName)) {
+    tossItem(itemName);
+  } else {
+    bot.chat("Sorry, I don't have that item in my inventory.");
+  }
+}
+
+function hasItem(itemName) {
+  const items = bot.inventory.items();
+
+  for (let item of items) {
+    if (item.displayName === itemName) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function tossItem(itemName) {
+  const item = bot.inventory.items().find((item) => item.displayName === itemName);
+  if (item) {
+    bot.toss(item.type, null, item.count, (err) => {
+      if (err) {
+        console.log(`Error dropping ${itemName}:`, err);
       } else {
-        resolve();
+        console.log(`Dropped ${itemName}`);
       }
     });
-  });
-
-  Promise.all(promises)
-    .then(() => {
-      console.log("All items dropped.");
-    })
-    .catch((err) => {
-      console.log("Error dropping items:", err);
-    });
+  } else {
+    console.log(`Item ${itemName} not found in inventory`);
+  }
 }
 
 //Warning: Don't take this function serious
 function chatBot() {
   const chatArray = [
     "Ik ben 13",
-    "Hebben jullie het al over het slangtje en gaatje gehad?",
+    "Hebben jullie het al over het slangetje en het gaatje gehad?",
     "Let's go a rally......Yahoo",
     "Ok, here we go",
     "Haaaaaaaaaaaaallllllllllllllllllllllloooooooooooooooo",
@@ -153,6 +154,8 @@ bot.on("spawn", () => {
 
 //chat commands
 bot.on("chat", (username, message) => {
+  const allItems = bot.registry.itemsArray;
+
   if (message == "mine tree") {
     // Repeatedly find and mine oak logs
     setInterval(findAndMineOakLogs, 5000);
@@ -162,9 +165,11 @@ bot.on("chat", (username, message) => {
     displayInventory();
   }
   //Let bot drop all his items
-  if (message === "drop items") {
-    dropAllItems();
-  }
+  allItems.forEach((item) => {
+    if (message === "drop " + item.displayName) {
+      dropItem(message);
+    }
+  });
   //Chat function to joke around
   if (message === "hey chip") {
     chatBot();
