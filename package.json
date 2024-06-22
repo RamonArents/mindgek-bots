@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.4.5",
     "minecraft-data": "^3.65.0",
     "mineflayer": "^4.20.1",
     "mineflayer-blockfinder": "^0.0.7",
